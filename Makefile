@@ -44,10 +44,8 @@ BULK_MEMORY_THRESHOLD ?= 32
 #TARGET_ARCH = wasm32
 TARGET_TRIPLE = $(TARGET_ARCH)-wasi
 MULTIARCH_TRIPLE = $(TARGET_ARCH)-wasi
-# Triple passed to the compiler. clang 23 deprecates `wasm32-wasi` in favor of
-# `wasm32-wasip1` (which is fatal with -Werror). Older clang treats both
-# identically, so always use `wasip1` here while keeping TARGET_TRIPLE for the
-# installation paths and the expected metadata directory.
+# Compiler triple; clang 22+ deprecates `wasm32-wasi` for `wasm32-wasip1`.
+# TARGET_TRIPLE stays `wasm32-wasi` for the installation paths.
 CLANG_TARGET_TRIPLE = $(TARGET_ARCH)-wasip1
 
 # These variables describe the locations of various files and directories in
