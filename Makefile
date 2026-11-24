@@ -44,6 +44,11 @@ BULK_MEMORY_THRESHOLD ?= 32
 #TARGET_ARCH = wasm32
 TARGET_TRIPLE = $(TARGET_ARCH)-wasi
 MULTIARCH_TRIPLE = $(TARGET_ARCH)-wasi
+# Triple passed to the compiler. clang 23 deprecates `wasm32-wasi` in favor of
+# `wasm32-wasip1` (which is fatal with -Werror). Older clang treats both
+# identically, so always use `wasip1` here while keeping TARGET_TRIPLE for the
+# installation paths and the expected metadata directory.
+CLANG_TARGET_TRIPLE = $(TARGET_ARCH)-wasip1
 
 # These variables describe the locations of various files and directories in
 # the source tree.
@@ -377,8 +382,8 @@ LIBC_TOP_HALF_ALL_SOURCES = \
 # Add any extra flags
 CFLAGS = $(EXTRA_CFLAGS)
 # Set the target.
-CFLAGS += --target=$(TARGET_TRIPLE)
-ASMFLAGS += --target=$(TARGET_TRIPLE)
+CFLAGS += --target=$(CLANG_TARGET_TRIPLE)
+ASMFLAGS += --target=$(CLANG_TARGET_TRIPLE)
 # WebAssembly floating-point match doesn't trap.
 # TODO: Add -fno-signaling-nans when the compiler supports it.
 CFLAGS += -fno-trapping-math
@@ -759,6 +764,8 @@ check-symbols: startup_files libc
 	@# TODO: Undefine __wasm_mutable_globals__ and __wasm_sign_ext__, that are new to
 	@# clang 16 for -mcpu=generic.
 	@# TODO: As of clang 16, __GNUC_VA_LIST is #defined without a value.
+	@# __wasip1__, __MEMORY_SCOPE_CLUSTR, __SIG_ATOMIC_TYPE__ and
+	@# __{WCHAR,WINT,SIG_ATOMIC}_MIN__ are new to clang 23 and filtered out below.
 	$(CC) $(CFLAGS) "$(SYSROOT_SHARE)/include-all.c" \
 	    -isystem $(SYSROOT_INC) \
 	    -std=gnu17 \
@@ -785,6 +792,8 @@ check-symbols: startup_files libc
 	    | sed -e 's/__GNUC_VA_LIST $$/__GNUC_VA_LIST 1/' \
 	    | grep -v '^#define __\(BOOL\|INT_\(LEAST\|FAST\)\(8\|16\|32\|64\)\|INT\|LONG\|LLONG\|SHRT\)_WIDTH__' \
 	    | grep -v '^#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_\(1\|2\|4\|8\)' \
+	    | grep -v '^#define __\(WCHAR\|WINT\|SIG_ATOMIC\)_MIN__ ' \
+	    | grep -v '^#define __\(SIG_ATOMIC_TYPE__\|MEMORY_SCOPE_CLUSTR\|wasip1__\) ' \
 	    > "$(SYSROOT_SHARE)/predefined-macros.txt"
 
 	# Check that the computed metadata matches the expected metadata.
